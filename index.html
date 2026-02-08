@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inversiones RyR | App</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        /* --- ESTILOS "CYBER-ANALYST" (MODO OSCURO) --- */
+        :root { 
+            --bg: #1e1e2f; 
+            --card: #27293d; 
+            --accent: #3273f5; 
+            --text: #fff; 
+            --green: #00f2c3; 
+            --red: #fd5d93;
+        }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); color: var(--text); padding: 20px; margin: 0; }
+        
+        /* Header */
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #444; padding-bottom: 15px; }
+        .brand { font-size: 1.5rem; font-weight: bold; letter-spacing: 1px; }
+        .brand span { color: var(--green); }
+        
+        .btn { background: var(--accent); color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; transition: 0.3s; }
+        .btn:hover { opacity: 0.9; }
+        
+        /* Grid de Clientes */
+        .client-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 15px; }
+        
+        .client-card { background: var(--card); padding: 20px; border-radius: 10px; border-left: 5px solid var(--green); box-shadow: 0 4px 6px rgba(0,0,0,0.3); position: relative; }
+        .client-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px; }
+        .client-name { font-size: 1.2rem; font-weight: bold; }
+        .client-date { font-size: 0.8rem; opacity: 0.7; }
+        
+        .info-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.9rem; }
+        .money { font-family: 'Courier New', monospace; font-weight: bold; letter-spacing: -0.5px; }
+        .debt { color: var(--green); font-size: 1.1rem; }
+        
+        .contact-info { background: rgba(0,0,0,0.2); padding: 10px; border-radius: 5px; margin: 10px 0; font-size: 0.85rem; color: #ccc; }
+        .contact-info i { width: 20px; text-align: center; margin-right: 5px; }
+
+        /* Botón WhatsApp */
+        .btn-wa { width: 100%; background: #25D366; color: white; border: none; padding: 12px; border-radius: 5px; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 10px; }
+        .btn-wa:hover { background: #20b85c; }
+
+        /* Mensaje de Carga */
+        #loading { text-align: center; padding: 40px; color: #888; font-style: italic; }
+
+        /* Modal Formulario */
+        .modal { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); align-items:center; justify-content:center; z-index: 1000; }
+        .modal-content { background: var(--card); padding: 25px; border-radius: 10px; width: 90%; max-width: 450px; border: 1px solid #444; }
+        
+        .form-group { margin-bottom: 15px; }
+        input { width: 100%; padding: 12px; background: #1a1a2e; border: 1px solid #444; color: white; border-radius: 5px; box-sizing: border-box; font-size: 1rem; }
+        input:focus { border-color: var(--accent); outline: none; }
+        
+        .preview-box { background: rgba(0, 242, 195, 0.1); padding: 15px; border-radius: 5px; margin: 15px 0; border: 1px solid rgba(0, 242, 195, 0.3); }
+        .preview-row { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 0.9rem; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <div class="brand"><i class="fas fa-chart-line"></i> INVERSIONES <span>RyR</span></div>
+    <button class="btn" onclick="openModal()"><i class="fas fa-plus"></i> Nuevo Préstamo</button>
+</div>
+
+<div id="loading"><i class="fas fa-spinner fa-spin"></i> Conectando con la base de datos...</div>
+
+<div class="client-grid" id="grid"></div>
+
+<div id="modal" class="modal">
+    <div class="modal-content">
+        <h3 style="margin-top:0; border-bottom: 1px solid #444; padding-bottom: 10px;">Nuevo Registro</h3>
+        <form id="form">
+            <div class="form-group">
+                <input type="text" id="cli" placeholder="Nombre Completo del Cliente" required>
+            </div>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;" class="form-group">
+                <input type="number" id="tel" placeholder="Teléfono (57...)" required>
+                <input type="text" id="dir" placeholder="Dirección / Barrio">
+            </div>
+            
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;" class="form-group">
+                <input type="number" id="monto" placeholder="Monto Préstamo" oninput="calc()" required>
+                <input type="number" id="porc" placeholder="% Interés" value="20" oninput="calc()">
+            </div>
+            
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;" class="form-group">
+                <input type="number" id="sem" placeholder="N° Semanas" value="8" oninput="calc()">
+                <input type="number" id="cuota" placeholder="Valor Cuota" oninput="calc()">
+            </div>
+
+            <div class="preview-box">
+                <div class="preview-row"><span>Entregar (Neto):</span> <strong id="out_entregar">$0</strong></div>
+                <div class="preview-row"><span>Ganancia (Ya):</span> <strong id="out_ganancia" style="color:var(--green)">$0</strong></div>
+                <div style="border-top:1px solid #555; margin-top:5px; padding-top:5px; display:flex; justify-content:space-between;">
+                    <span>Total a Recaudar:</span> <strong id="out_total" style="color:var(--green); font-size:1.1em;">$0</strong>
+                </div>
+            </div>
+
+            <div style="display:flex; gap:10px;">
+                <button type="button" class="btn" style="background:#444; flex:1;" onclick="closeModal()">Cancelar</button>
+                <button type="submit" class="btn" style="flex:1;">Guardar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    // --- TU URL CONECTADA ---
+    const API = "https://script.google.com/macros/s/AKfycbz_3MME39zI1PQXsZgazoHZPR73RSvpDfJFuHsrq4RXB5rtXh6TAuaoSyF4qiHwXkY7/exec";
+
+    const f = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 });
+
+    // Cargar Datos al Iniciar
+    fetch(API)
+        .then(r => r.json())
+        .then(data => {
+            document.getElementById('loading').style.display = 'none';
+            const grid = document.getElementById('grid');
+            grid.innerHTML = '';
+            
+            if(data.length === 0) {
+                grid.innerHTML = '<div style="grid-column: 1/-1; text-align:center;">No hay clientes registrados aún.</div>';
+                return;
+            }
+
+            data.forEach(c => {
+                const div = document.createElement('div');
+                div.className = 'client-card';
+                
+                // Formatear fecha si existe
+                let fechaDisplay = c.fecha ? new Date(c.fecha).toLocaleDateString() : 'Fecha N/A';
+
+                div.innerHTML = `
+                    <div class="client-header">
+                        <div>
+                            <div class="client-name">${c.cliente}</div>
+                            <div class="client-date"><i class="far fa-calendar-alt"></i> ${fechaDisplay}</div>
+                        </div>
+                        <div style="text-align:right">
+                            <small>Prestado</small><br>
+                            <span class="money">${f.format(c.prestamo)}</span>
+                        </div>
+                    </div>
+
+                    <div class="contact-info">
+                        <div><i class="fas fa-phone"></i> ${c.telefono}</div>
+                        <div style="margin-top:5px;"><i class="fas fa-map-marker-alt"></i> ${c.direccion}</div>
+                    </div>
+                    
+                    <div class="info-row" style="margin-top:15px;">
+                        <span>Cuota Semanal:</span>
+                        <span class="money">${f.format(c.cuota)}</span>
+                    </div>
+                    <div class="info-row">
+                        <span>Total a Pagar:</span>
+                        <span class="money debt">${f.format(c.totalRecaudo)}</span>
+                    </div>
+
+                    <button class="btn-wa" onclick="wa('${c.telefono}', '${c.cliente}', '${c.cuota}')">
+                        <i class="fab fa-whatsapp"></i> COBRAR ${f.format(c.cuota)}
+                    </button>
+                `;
+                grid.appendChild(div);
+            });
+        })
+        .catch(error => {
+            document.getElementById('loading').innerHTML = '<span style="color:var(--red)">Error de conexión. Verifica tu internet.</span>';
+            console.error(error);
+        });
+
+    // Lógica de la Calculadora (Mágica)
+    function calc() {
+        const monto = parseFloat(document.getElementById('monto').value) || 0;
+        const porc = parseFloat(document.getElementById('porc').value) || 0;
+        const sem = parseFloat(document.getElementById('sem').value) || 0;
+        const cuota = parseFloat(document.getElementById('cuota').value) || 0;
+
+        const ganancia = monto * (porc/100);
+        const entregar = monto - ganancia;
+        const total = cuota * sem;
+
+        document.getElementById('out_entregar').innerText = f.format(entregar);
+        document.getElementById('out_ganancia').innerText = f.format(ganancia);
+        document.getElementById('out_total').innerText = f.format(total);
+        
+        return { monto, porc, entregar, ganancia, sem, cuota, total };
+    }
+
+    // Guardar Nuevo Cliente
+    document.getElementById('form').onsubmit = e => {
+        e.preventDefault();
+        const v = calc();
+        
+        // Objeto con la estructura de 12 columnas
+        const data = {
+            cliente: document.getElementById('cli').value,
+            telefono: document.getElementById('tel').value,
+            direccion: document.getElementById('dir').value,
+            prestamo: v.monto,
+            porcentaje: v.porc,
+            entregado: v.entregar,
+            ganancia: v.ganancia,
+            semanas: v.sem,
+            cuota: v.cuota,
+            totalRecaudo: v.total
+        };
+        
+        const btn = e.target.querySelector('button[type="submit"]');
+        const originalText = btn.innerText;
+        btn.innerText = 'Guardando...';
+        btn.disabled = true;
+        
+        fetch(API, { 
+            method: 'POST', 
+            body: JSON.stringify(data) 
+        })
+        .then(response => response.json())
+        .then(() => {
+            alert('¡Cliente Registrado Exitosamente!');
+            location.reload(); // Recargar página para ver el nuevo cliente
+        })
+        .catch(err => {
+            alert('Error al guardar. Intenta de nuevo.');
+            btn.innerText = originalText;
+            btn.disabled = false;
+        });
+    };
+
+    // Funciones UI
+    function openModal() { document.getElementById('modal').style.display = 'flex'; }
+    function closeModal() { document.getElementById('modal').style.display = 'none'; }
+    
+    function wa(tel, nom, val) {
+        // Limpiar número de espacios o guiones
+        let cleanTel = tel.toString().replace(/\D/g,'');
+        // Si no tiene 57 al inicio y parece celular, se lo ponemos (opcional)
+        if(cleanTel.length === 10) cleanTel = '57' + cleanTel;
+        
+        window.open(`https://wa.me/${cleanTel}?text=Hola ${nom}, paso a recordarte la cuota de esta semana por ${f.format(val)}`, '_blank');
+    }
+</script>
+
+</body>
+</html>
